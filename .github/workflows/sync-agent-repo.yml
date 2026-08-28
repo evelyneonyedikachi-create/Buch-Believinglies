@@ -1,0 +1,49 @@
+name: Sync Agent Repository
+
+on:
+  # Run manually from GitHub Actions
+  workflow_dispatch:
+
+  # Automatically check every 15 minutes
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout destination repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone agent repository
+        run: |
+          git clone --depth 1 \
+            https://github.com/onlinefirst2026-beep/Book-BelievingLies.git \
+            /tmp/agent-repo
+
+      - name: Copy agent code into this repository
+        run: |
+          rsync -av --delete \
+            --exclude='.git/' \
+            --exclude='.github/workflows/' \
+            /tmp/agent-repo/ ./
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "OnlineFirst Sync Bot"
+          git config user.email "actions@github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes detected."
+          else
+            git commit -m "sync: update from Book-BelievingLies"
+            git push origin main
+          fi
